@@ -6,12 +6,12 @@ import numpy as np
 
 import streamlit as st
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # funzioni personalizzate
 from round_robin import get_rr_rounds
 from elo_functions import new_elos, get_K
 from gdrive_functions import write_df_in_spreadsheet
-
 
 # COSTANTI
 
@@ -26,10 +26,8 @@ players_names = data['players_names']
 st.markdown("# DOMINION")
 
 st.write("Link utili ai fogli:")
-st.markdown("[Foglio Calcoli](" +
-            str(data['link_sheet_calcolo_elo']) + ")", unsafe_allow_html=True)
-st.markdown("[Foglio Punteggi](" +
-            str(data['link_sheet_punteggi']) + ")", unsafe_allow_html=True)
+st.markdown("[Foglio Calcoli](" + str(data['link_sheet_calcolo_elo']) + ")", unsafe_allow_html=True)
+st.markdown("[Foglio Punteggi](" + str(data['link_sheet_punteggi']) + ")", unsafe_allow_html=True)
 
 
 class Player:
@@ -62,9 +60,7 @@ presence = dict(zip(players_names,
                     ))
 
 # seleziono i giocatori giocanti (presenti)
-playing = [player_name for player_name,
-           present in presence.items() if present == True]
-
+playing = [player_name for player_name, present in presence.items() if present == True]
 
 if(st.button("Estrai!")):
     # estraggo i turni
@@ -104,6 +100,13 @@ st.markdown("---")
 st.markdown("## Punteggi ELO")
 st.markdown(
     "Il seguente pulsante analizza il foglio _Vinte e Disputate_ e ne calcola gli Elo.")
+
+
+col1, col2 = st.beta_columns((1, 1))
+startDate = col1.date_input("INIZIO", datetime(2021, 1, 1))
+endDate = col2.date_input("FINE", datetime.today())
+st.markdown("⚠️ Il sistema delle date è WIP")
+# TODO
 
 
 def aggiornaElo(players, vinte, disputate):
@@ -222,7 +225,7 @@ def aggiornaVinteDisputate(sheets_dict, players, roundUP=False):
         del sheets_dict[key]['PUNTI']
         del sheets_dict[key]['% PUNTI']
 
-        #giocatori = mydf['GIOCATORE'].unique()
+        # giocatori = mydf['GIOCATORE'].unique()
 
         vinte_disputate_row = []
         for player in players:
@@ -309,7 +312,7 @@ if(st.button("Calcola ELO")):
     mostra_elo_df.write(elo_df)
 
     # elo_df.plot(grid=True)
-    #plt.legend(loc='center right', bbox_to_anchor=(1, 0.5))
+    # plt.legend(loc='center right', bbox_to_anchor=(1, 0.5))
 
     st.markdown("### Punteggi normalizzati")
     elo_norm = (elo_df - elo_df.min()) / (elo_df.max()-elo_df.min())
@@ -351,7 +354,7 @@ if(st.button("Calcola ELO")):
 
     # WinRate puntuale e cumulativo DFs
     winrate_puntuale = vinte.div(disputate)
-    #winrate_puntuale.fillna(0, inplace=True)
+    # winrate_puntuale.fillna(0, inplace=True)
     winrate_cumulativo = vinte.cumsum() / disputate.cumsum()
 
     statistiche = pd.DataFrame(columns=players_names)
@@ -363,7 +366,7 @@ if(st.button("Calcola ELO")):
         statistiche.loc['Vinte'] / statistiche.loc['Disputate']).round(3)
     statistiche.loc['Massimo ELO'] = elo_df.max().round(2)
     statistiche.loc['Minimo ELO'] = elo_df.min().round(2)
-    #statistiche.loc['Raggiunto il'] = elo_df.idxmax(axis=0)
+    # statistiche.loc['Raggiunto il'] = elo_df.idxmax(axis=0)
     statistiche.loc['Delta'] = (elo_df.max()-elo_df.min()).round(2)
 
     # PRIMO PER
@@ -375,7 +378,7 @@ if(st.button("Calcola ELO")):
     # https://stackoverflow.com/questions/26911851/how-to-use-pandas-to-find-consecutive-same-data-in-time-series
     # https://stackoverflow.com/questions/27626542/counting-consecutive-positive-value-in-python-array
     mydf = pd.DataFrame(data=serie_primo, columns=[
-                        'firstplayer'], index=vinte.index)
+        'firstplayer'], index=vinte.index)
     mydf['subgroup'] = (mydf['firstplayer'] !=
                         mydf['firstplayer'].shift(1)).cumsum()
     # mydf['subgroup'].value_counts()
@@ -481,7 +484,7 @@ st.markdown("## Aggiornamenti")
 st.markdown("Il seguente pulsante guarda il foglio dei punteggi e aggiorna, sovrascrivendo ogni volta per intero, il foglio _Vinte e Disputate_, usato poi nel calcolo dell'Elo.")
 
 
-#progress_bar = st.progress(0)
+# progress_bar = st.progress(0)
 if(st.button("Aggiorna \"Vinte e Disputate\"")):
 
     status_text = st.empty()
