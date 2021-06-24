@@ -106,7 +106,7 @@ st.markdown(
     "Il seguente pulsante analizza il foglio _Vinte e Disputate_ e ne calcola gli Elo.")
 
 
-def aggiornaElo(players, vinte_disputate_df):
+def aggiornaElo(players, vinte, disputate):
     """
     I: players (lista di oggetti Player), vinte_disputate_df dataframe
     O: dataframe di elo
@@ -119,14 +119,14 @@ def aggiornaElo(players, vinte_disputate_df):
     start_row.insert(0, pd.to_datetime('2020-12-31'))
     elo_list.append(start_row)
 
-    number_of_total_players = int(vinte_disputate_df.shape[1]/2)
+    number_of_total_players = int(vinte.shape[1])
 
-    for indice_riga in range(vinte_disputate_df.shape[0]):
+    for indice_riga in range(vinte.shape[0]):
 
         # controllo chi era presente
         for idx, player in enumerate(players):
             # se le disputate sono zero
-            if (int(vinte_disputate_df.iloc[indice_riga, 2*idx+1]) == 0):
+            if (int(disputate.iloc[indice_riga, idx]) == 0):
                 player.presence = False
             else:
                 player.presence = True
@@ -144,7 +144,7 @@ def aggiornaElo(players, vinte_disputate_df):
             if player.presence == True:
                 # appendo il punteggio effettivo (2*i perché non considero le disputate)
                 effective_scores.append(
-                    float(vinte_disputate_df.iloc[indice_riga, 2*idx]))
+                    float(vinte.iloc[indice_riga, idx]))
 
         # determino il k da usare
         number_of_playing = len(playing)
@@ -165,7 +165,7 @@ def aggiornaElo(players, vinte_disputate_df):
         # prima metto tutti gli elo nuovi
         nuova_partita = [player.elo for player in players]
         # poi aggiungo la data in posizione 0, la quale è l'indice del df
-        nuova_partita.insert(0, vinte_disputate_df.index[indice_riga])
+        nuova_partita.insert(0, vinte.index[indice_riga])
 
         # finalmente aggiungo la lista
         elo_list.append(nuova_partita)
@@ -185,14 +185,61 @@ def aggiornaElo(players, vinte_disputate_df):
     return elo_df
 
 
-def pandaSeries_to_md_table(serie):
-    righe = ["|", "|", "|"]
-    for idx, value in serie.items():  # idx è il giocatore
-        righe[0] += idx + '|'
-        righe[1] += ':---:' + '|'
-        righe[2] += str(round(value)) + '|'
+def aggiornaVinteDisputate(sheets_dict, players, roundUP=False):
+    """
+    I: sheets_dict il dizionario di dataframes, generato dall'excel, players lista di oggetti Player
+    O: dataframe vinte_disputate
+    """
+    head = ['data']
+    for name in players_names:
+        head.append(name.lower()+'_vinte')
+        head.append(name.lower()+'_disputate')
 
-    return righe[0] + '\n' + righe[1] + '\n' + righe[2]
+    vinte_disputate = pd.DataFrame(columns=head)
+    vinte_disputate.set_index('data', inplace=True)
+    # print(head)
+
+    # ciclo sul dizionario, analizzando ogni foglio, che è un dataframe
+    for idx, key in enumerate(sheets_dict):
+
+        # key è la data, il nome del foglio
+        # sheets_dict[key] è il df
+
+        # prendo solo quelle dopo un certo giorno/anno TODO da sistemare in base alla richiesta
+        giorno = pd.to_datetime(key, format='%d%m%Y')
+        if giorno.year < 2021:
+            continue
+
+        # trovo l'indice in corrispondenza di 'CLASSIFICA'
+        index_incriminato = sheets_dict[key][sheets_dict[key]
+                                             ['GIOCATORE'] == 'CLASSIFICA'].index[0]
+
+        # elimino tutto ciò che c'è dopo
+        sheets_dict[key].drop(
+            sheets_dict[key].index[index_incriminato:], inplace=True)
+
+        # elimino due colonne di cui non mi interessa il contenuto
+        del sheets_dict[key]['PUNTI']
+        del sheets_dict[key]['% PUNTI']
+
+        #giocatori = mydf['GIOCATORE'].unique()
+
+        vinte_disputate_row = []
+        for player in players:
+
+            serie_vittorie = sheets_dict[key][sheets_dict[key]
+                                              ['GIOCATORE'] == player.name]['VITTORIE']
+
+            player.vinte = sum(serie_vittorie) if roundUP == False else sum(
+                np.ceil(serie_vittorie))
+            player.disputate = len(serie_vittorie)
+
+            vinte_disputate_row.append(player.vinte)
+            vinte_disputate_row.append(player.disputate)
+
+        vinte_disputate.loc[giorno] = vinte_disputate_row
+
+    return vinte_disputate
 
 
 if(st.button("Calcola ELO")):
@@ -211,10 +258,16 @@ if(st.button("Calcola ELO")):
     # la imposto come indice
     vinte_disputate_df.set_index('data', inplace=True)
 
+    # spacco in due il dataframe
+    vinte = vinte_disputate_df.iloc[:, 0::2]
+    vinte.columns = players_names
+    disputate = vinte_disputate_df.iloc[:, 1::2]
+    disputate.columns = players_names
+
     # ora che ho il dataframe lo dò in pasto alla funzione aggiornaElo,
     # insieme alla lista di players
     status_calcola_elo.text("Genero i nuovi elo...")
-    elo_df = aggiornaElo(players, vinte_disputate_df)
+    elo_df = aggiornaElo(players, vinte, disputate)
 
     status_calcola_elo.text("Completato. Ecco i plot:")
 
@@ -276,148 +329,156 @@ if(st.button("Calcola ELO")):
     statistiche = pd.DataFrame()
 
     st.markdown("### Classifica")
+
+    # creo la classifica
     classifica = elo_df.iloc[-1]
-    # inplace=True fa si che la modifica sia applicata
+
+    # la sorto dal valore più alto al più piccolo
     classifica.sort_values(ascending=False, inplace=True)
-    posto_classifica = 1
-    for idx, value in classifica.items():
-        st.write(f"{posto_classifica} - {idx}:\t\t{round(value)}")
-        posto_classifica += 1
+
+    # aggiungo le medaglie
+    indexes = classifica.index
+    classifica.rename(index={
+        indexes[0]: '🥇 '+indexes[0],
+        indexes[1]: '🥈 '+indexes[1],
+        indexes[2]: '🥉 '+indexes[2]
+    }, inplace=True)
+
+    # pip install tabulate
+    st.markdown(classifica.to_markdown())
 
     st.markdown("### Ulteriori statistiche (cioè funzioni dei dati)")
 
-    # st.markdown("### Numero partite vinte e partite disputate")
-
-    # righe = ["||", "|:---|", "|Vinte|", "|Disputate|"]
-    # i = 0
-    # for idx, value in vinte_disputate_df.sum().items():  # idx è teo_vinte...
-    #     if i % 2 == 0:  # è un valore di vinte
-    #         righe[0] += players[i//2].name + '|'
-    #         righe[2] += str(round(value)) + '|'
-    #     else:  # è un valore di disputate
-    #         righe[3] += str(round(value)) + '|'
-    #     righe[1] += ':---:' + '|'
-    #     i += 1
-    # tabella_numero_vinte_disputate = righe[0] + '\n' + \
-    #     righe[1] + '\n' + righe[2] + '\n' + righe[3]
-    # st.markdown(tabella_numero_vinte_disputate)
+    # WinRate puntuale e cumulativo DFs
+    winrate_puntuale = vinte.div(disputate)
+    #winrate_puntuale.fillna(0, inplace=True)
+    winrate_cumulativo = vinte.cumsum() / disputate.cumsum()
 
     statistiche = pd.DataFrame(columns=players_names)
 
-    # media
-    statistiche.loc['Media'] = elo_df.mean()
+    statistiche.loc['Media'] = elo_df.mean().round(2)
+    statistiche.loc['Vinte'] = vinte.sum().values
+    statistiche.loc['Disputate'] = disputate.sum().values
+    statistiche.loc['WinRate'] = (
+        statistiche.loc['Vinte'] / statistiche.loc['Disputate']).round(3)
+    statistiche.loc['Massimo ELO'] = elo_df.max().round(2)
+    statistiche.loc['Minimo ELO'] = elo_df.min().round(2)
+    #statistiche.loc['Raggiunto il'] = elo_df.idxmax(axis=0)
+    statistiche.loc['Delta'] = (elo_df.max()-elo_df.min()).round(2)
 
-    # vinte e disputate
-    # vinte_disputate_df.sum().items() è uno zip, va tradotto in lista per estrarre
-    statistiche.loc['Vinte'] = [value for idx, value in list(
-        vinte_disputate_df.sum().items())[::2]]
-    statistiche.loc['Disputate'] = [value for idx,
-                                    value in list(vinte_disputate_df.sum().items())[1::2]]
+    # PRIMO PER
+    serie_primo = elo_df.iloc[1:, :].idxmax(axis=1)
+    for idx, value in serie_primo.value_counts().items():
+        statistiche.loc['Primo per', idx] = value
 
-    # winrate
-    statistiche.loc['WinRate complessivo'] = statistiche.loc['Vinte'] / \
-        statistiche.loc['Disputate']
+    # ININTERROTTAMENTE PER
+    # https://stackoverflow.com/questions/26911851/how-to-use-pandas-to-find-consecutive-same-data-in-time-series
+    # https://stackoverflow.com/questions/27626542/counting-consecutive-positive-value-in-python-array
+    mydf = pd.DataFrame(data=serie_primo, columns=[
+                        'firstplayer'], index=vinte.index)
+    mydf['subgroup'] = (mydf['firstplayer'] !=
+                        mydf['firstplayer'].shift(1)).cumsum()
+    # mydf['subgroup'].value_counts()
+    statistiche.loc['Ininterrottamente'] = 0
 
-    # winrate puntuale
-    winrate_df = pd.DataFrame(
-        data=None, columns=elo_df.columns, index=vinte_disputate_df.index)
-    # per tutte le colonne diviso 2, cioè i giocatori
-    for i in range(vinte_disputate_df.shape[1]//2):
-        winrate_df.iloc[:, i] = vinte_disputate_df.iloc[:,
-                                                        2*i] / vinte_disputate_df.iloc[:, 2*i+1]
+    for idx, value in mydf['subgroup'].value_counts().items():
+        # trovo il nome
+        nome = mydf[mydf['subgroup'] == idx].iloc[0, 0]
+        # se il numero di volte consecutivo attuale è più piccolo di quello che trovo
+        if statistiche.loc['Ininterrottamente', nome] < value:
+            statistiche.loc['Ininterrottamente', nome] = value
 
-    # winrate cumulativo
-    vinte_disputate_cumulative_df = vinte_disputate_df.cumsum()
-    # ripeto identico
-    winrate_cum_df = pd.DataFrame(
-        data=None, columns=elo_df.columns, index=vinte_disputate_cumulative_df.index)
-    # per tutte le colonne diviso 2, cioè i giocatori
-    for i in range(vinte_disputate_cumulative_df.shape[1]//2):
-        winrate_cum_df.iloc[:, i] = vinte_disputate_cumulative_df.iloc[:,
-                                                                       2*i] / vinte_disputate_cumulative_df.iloc[:, 2*i+1]
-    # st.line_chart(winrate_cum_df)
+    # chi non è mai stato primo ha un NaN
+    statistiche.fillna(0, inplace=True)
 
-    statistiche.loc['Massimo ELO'] = elo_df.max()
-    statistiche.loc['Raggiunto il'] = elo_df.idxmax(axis=0)
+    # prendo dal primo gennaio TODO
+    MVPs = elo_var.iloc[1:, :].idxmax(axis=1).value_counts()
+    mong = elo_var.iloc[1:, :].idxmin(
+        axis=1).value_counts()  # prendo dal primo gennaio
+
+    for idx, value in MVPs.items():
+        statistiche.loc['MPVs', idx] = value
+
+    for idx, value in mong.items():
+        statistiche.loc['Mongolini', idx] = value
+
+    statistiche['TOP PLAYER'] = statistiche.idxmax(axis=1)
+
+    # il top player dell'elo minimo non è quello che ha il massimo elo minimo, quindi devo cambiarlo manualmente
+    statistiche.loc['Minimo ELO',
+                    'TOP PLAYER'] = statistiche.loc['Minimo ELO'].iloc[:-1].astype(float).idxmin()
 
     st.write(statistiche)
 
+    # mostro DataFrame del WinRate
     mostra_winrate_puntuale = st.beta_expander(
         "Mostra il WinRate puntuale", expanded=False)
-    mostra_winrate_puntuale.write(winrate_df)
+    mostra_winrate_puntuale.write(winrate_puntuale)
 
     mostra_winrate_cum = st.beta_expander(
         "Mostra il WinRate cumulativo", expanded=False)
-    mostra_winrate_cum.write(winrate_cum_df)
+    mostra_winrate_cum.write(winrate_cumulativo)
 
+    # Plotto il WinRate cumulativo
     st.markdown("WinRate cumulativo")
-    st.line_chart(winrate_cum_df.iloc[1:])
+    st.line_chart(winrate_cumulativo.iloc[1:])
 
-    serie_chi_primo_quanto = elo_df.iloc[1:, :].idxmax(
-        axis=1).value_counts()  # prendo dal primo gennaio
+# CAMPIONI N/N
 
-    st.markdown("Primo per:")
-    st.bar_chart(serie_chi_primo_quanto)
+if(st.button("Mostra i Campioni")):
+    # devo recuperare due nuove tabelle con le vittorie secondo la logica di Dominion
+
+    sheets_dict = pd.read_excel(
+        data['sheet_punteggi_xls'], sheet_name=None)
+    vinte_disputate_dom = aggiornaVinteDisputate(
+        sheets_dict, players, roundUP=True)
+
+    # spacco in due il dataframe
+    vinte_dom = vinte_disputate_dom.iloc[:, 0::2]
+    vinte_dom.columns = players_names
+    disputate_dom = vinte_disputate_dom.iloc[:, 1::2]
+    disputate_dom.columns = players_names
+
+    # questa tabella è T/F se è in corrispondenza di un campione
+    tabella_verita = disputate_dom[(
+        vinte_dom == disputate_dom) & (disputate_dom != 0)]
+
+    # semplifico droppando i NaN
+    tabella_verita.dropna(how='all', inplace=True)
+
+    # i possibili valori
+    ns = [3, 4, 5]
+
+    def buildName(n):
+        return f'Campioni {n}/{n}'
+
+    # creo un dizionario di dataframe
+    champions_collection = dict()
+    for n in ns:
+        champions_collection[buildName(n)] = pd.DataFrame(
+            columns=['Giocatore'])
+
+    # non so minimamente cosa faccia stack(), ma così mi restituisce le coppie indice/colonna da esaminare
+    label_da_esaminare = list(tabella_verita.stack().index)
+
+    for label in label_da_esaminare:
+        date = label[0]
+        name = label[1]
+        nn = disputate_dom.loc[date, name]  # i punti di questa
+
+        # aggiorno il dataframe "nn"=1,2,3, in corrispondenza della data nella colonna "Giocatore"
+        # con il nome del giocatore campione
+        champions_collection[buildName(nn)].loc[date, 'Giocatore'] = name
+
+    # li mostro
+    for key in champions_collection.keys():
+        st.markdown(str(key))
+        st.write(champions_collection[key])
+
 
 st.markdown("---")
 st.markdown("## Aggiornamenti")
 st.markdown("Il seguente pulsante guarda il foglio dei punteggi e aggiorna, sovrascrivendo ogni volta per intero, il foglio _Vinte e Disputate_, usato poi nel calcolo dell'Elo.")
-
-
-def aggiornaVinteDisputate(sheets_dict, players):
-    """
-    I: sheets_dict il dizionario di dataframes, generato dall'excel, players lista di oggetti Player
-    O: dataframe vinte_disputate
-    """
-    head = ['data']
-    for name in players_names:
-        head.append(name.lower()+'_vinte')
-        head.append(name.lower()+'_disputate')
-
-    vinte_disputate = pd.DataFrame(columns=head)
-    vinte_disputate.set_index('data', inplace=True)
-    # print(head)
-
-    # ciclo sul dizionario, analizzando ogni foglio, che è un dataframe
-    for idx, key in enumerate(sheets_dict):
-
-        # key è la data, il nome del foglio
-        # sheets_dict[key] è il df
-
-        # prendo solo quelle dopo un certo giorno/anno TODO da sistemare in base alla richiesta
-        giorno = pd.to_datetime(key, format='%d%m%Y')
-        if giorno.year < 2021:
-            continue
-
-        # trovo l'indice in corrispondenza di 'CLASSIFICA'
-        index_incriminato = sheets_dict[key][sheets_dict[key]
-                                             ['GIOCATORE'] == 'CLASSIFICA'].index[0]
-
-        # elimino tutto ciò che c'è dopo
-        sheets_dict[key].drop(
-            sheets_dict[key].index[index_incriminato:], inplace=True)
-
-        # elimino due colonne di cui non mi interessa il contenuto
-        del sheets_dict[key]['PUNTI']
-        del sheets_dict[key]['% PUNTI']
-
-        #giocatori = mydf['GIOCATORE'].unique()
-
-        vinte_disputate_row = []
-        for player in players:
-
-            serie_vittorie = sheets_dict[key][sheets_dict[key]
-                                              ['GIOCATORE'] == player.name]['VITTORIE']
-
-            player.vinte = sum(serie_vittorie)
-            player.disputate = len(serie_vittorie)
-
-            vinte_disputate_row.append(player.vinte)
-            vinte_disputate_row.append(player.disputate)
-
-        vinte_disputate.loc[giorno] = vinte_disputate_row
-
-    return vinte_disputate
 
 
 #progress_bar = st.progress(0)
@@ -446,12 +507,4 @@ if(st.button("Aggiorna \"Vinte e Disputate\"")):
 
 
 # TODO
-# primo per, primo ininterrottamente per
-# win rate puntuale e cumulativo + grafici
-# campioni 3/3... TOSTO bisogna ripartire dal foglio dei tornei
-# date importanti (espansioni)
-# mongolini e MVP
-
-# vinte e disputate devono essere due separati
-# per consecutivi
-# https://stackoverflow.com/questions/26911851/how-to-use-pandas-to-find-consecutive-same-data-in-time-series
+# date importanti (espansioni) nel grafico
