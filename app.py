@@ -293,8 +293,7 @@ if(st.button("Calcola ELO")):
         'player', value='elo', groupby=['data']
     ).mark_rule().encode(
         opacity=alt.condition(selection, alt.value(0.3), alt.value(0)),
-        tooltip=[alt.Tooltip(c, type='quantitative', format='.1f')
-                 for c in columns]
+        tooltip=[alt.Tooltip(c, type='quantitative', format='.1f') for c in columns]
     ).add_selection(selection)
 
     grafico = alt.layer(lines, points, rule).properties(
@@ -360,8 +359,7 @@ if(st.button("Calcola ELO")):
     statistiche.loc['Media'] = elo_df.mean().round(2)
     statistiche.loc['Vinte'] = vinte.sum().values
     statistiche.loc['Disputate'] = disputate.sum().values
-    statistiche.loc['WinRate'] = (
-        statistiche.loc['Vinte'] / statistiche.loc['Disputate']).round(3)
+    statistiche.loc['WinRate'] = (statistiche.loc['Vinte'] / statistiche.loc['Disputate']).round(3)
     statistiche.loc['Massimo ELO'] = elo_df.max().round(2)
     statistiche.loc['Minimo ELO'] = elo_df.min().round(2)
     # statistiche.loc['Raggiunto il'] = elo_df.idxmax(axis=0)
@@ -412,12 +410,10 @@ if(st.button("Calcola ELO")):
     st.write(statistiche)
 
     # mostro DataFrame del WinRate
-    mostra_winrate_puntuale = st.beta_expander(
-        "Mostra il WinRate puntuale", expanded=False)
+    mostra_winrate_puntuale = st.beta_expander("Mostra il WinRate puntuale", expanded=False)
     mostra_winrate_puntuale.write(winrate_puntuale)
 
-    mostra_winrate_cum = st.beta_expander(
-        "Mostra il WinRate cumulativo", expanded=False)
+    mostra_winrate_cum = st.beta_expander("Mostra il WinRate cumulativo", expanded=False)
     mostra_winrate_cum.write(winrate_cumulativo)
 
     # Plotto il WinRate cumulativo
@@ -429,10 +425,8 @@ if(st.button("Calcola ELO")):
 if(st.button("Mostra i Campioni")):
     # devo recuperare due nuove tabelle con le vittorie secondo la logica di Dominion
 
-    sheets_dict = pd.read_excel(
-        data['sheet_punteggi_xls'], sheet_name=None)
-    vinte_disputate_dom = aggiornaVinteDisputate(
-        sheets_dict, players, roundUP=True)
+    sheets_dict = pd.read_excel(data['sheet_punteggi_xls'], sheet_name=None)
+    vinte_disputate_dom = aggiornaVinteDisputate(sheets_dict, players, roundUP=True)
 
     # spacco in due il dataframe
     vinte_dom = vinte_disputate_dom.iloc[:, 0::2]
@@ -441,8 +435,7 @@ if(st.button("Mostra i Campioni")):
     disputate_dom.columns = players_names
 
     # questa tabella è T/F se è in corrispondenza di un campione
-    tabella_verita = disputate_dom[(
-        vinte_dom == disputate_dom) & (disputate_dom != 0)]
+    tabella_verita = disputate_dom[(vinte_dom == disputate_dom) & (disputate_dom != 0)]
 
     # semplifico droppando i NaN
     tabella_verita.dropna(how='all', inplace=True)
@@ -502,8 +495,7 @@ if(st.button("Aggiorna \"Vinte e Disputate\"")):
     new_df['data'] = new_df['data'].dt.strftime('%d/%m/%Y')
 
     status_text.text("Scrivo nel foglio Google...")
-    write_df_in_spreadsheet(
-        data['vinte_disputate_worksheet_name'], data['id_sheet_elo'], data['credentials_json_path'], new_df)
+    write_df_in_spreadsheet(data['vinte_disputate_worksheet_name'], data['id_sheet_elo'], data['credentials_json_path'], new_df)
     status_text.text("Terminato. Ecco i risultati:")
 
 
