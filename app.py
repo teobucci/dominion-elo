@@ -230,11 +230,9 @@ def aggiornaVinteDisputate(sheets_dict, players, roundUP=False):
         vinte_disputate_row = []
         for player in players:
 
-            serie_vittorie = sheets_dict[key][sheets_dict[key]
-                                              ['GIOCATORE'] == player.name]['VITTORIE']
+            serie_vittorie = sheets_dict[key][sheets_dict[key]['GIOCATORE'] == player.name]['VITTORIE']
 
-            player.vinte = sum(serie_vittorie) if roundUP == False else sum(
-                np.ceil(serie_vittorie))
+            player.vinte = sum(serie_vittorie) if roundUP == False else sum(np.ceil(serie_vittorie))
             player.disputate = len(serie_vittorie)
 
             vinte_disputate_row.append(player.vinte)
@@ -511,3 +509,9 @@ if(st.button("Aggiorna \"Vinte e Disputate\"")):
 
 # TODO
 # date importanti (espansioni) nel grafico
+
+
+# ricalcola tutto e scrivi
+# calcola ciò che manca e scrivi l'ultimo
+# leggi tutto
+# https://docs.gspread.org/en/latest/user-guide.html#using-gspread-with-pandas
