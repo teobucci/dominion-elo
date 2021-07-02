@@ -98,8 +98,7 @@ if(st.button("Estrai!")):
 
 st.markdown("---")
 st.markdown("## Punteggi ELO")
-st.markdown(
-    "Il seguente pulsante analizza il foglio _Vinte e Disputate_ e ne calcola gli Elo.")
+st.markdown("Il seguente pulsante analizza il foglio _Vinte e Disputate_ e ne calcola gli Elo.")
 
 
 col1, col2 = st.beta_columns((1, 1))
@@ -243,7 +242,7 @@ def aggiornaVinteDisputate(sheets_dict, players, roundUP=False):
     return vinte_disputate
 
 
-if(st.button("Calcola ELO")):
+if(st.button("Calcola ELO e aggiorna il foglio (verranno mostrati i plot)")):  # TODO
 
     status_calcola_elo = st.empty()
 
@@ -304,8 +303,7 @@ if(st.button("Calcola ELO")):
     st.markdown("### Punteggi")
     st.altair_chart(grafico)
 
-    mostra_elo_df = st.beta_expander(
-        "Mostra il dataframe degli Elo", expanded=False)
+    mostra_elo_df = st.beta_expander("Mostra il dataframe degli Elo", expanded=False)
     mostra_elo_df.write(elo_df)
 
     # elo_df.plot(grid=True)
@@ -404,8 +402,7 @@ if(st.button("Calcola ELO")):
     statistiche['TOP PLAYER'] = statistiche.idxmax(axis=1)
 
     # il top player dell'elo minimo non è quello che ha il massimo elo minimo, quindi devo cambiarlo manualmente
-    statistiche.loc['Minimo ELO',
-                    'TOP PLAYER'] = statistiche.loc['Minimo ELO'].iloc[:-1].astype(float).idxmin()
+    statistiche.loc['Minimo ELO', 'TOP PLAYER'] = statistiche.loc['Minimo ELO'].iloc[:-1].astype(float).idxmin()
 
     st.write(statistiche)
 
@@ -419,6 +416,8 @@ if(st.button("Calcola ELO")):
     # Plotto il WinRate cumulativo
     st.markdown("WinRate cumulativo")
     st.line_chart(winrate_cumulativo.iloc[1:])
+
+st.button("Leggi ELO dal foglio attuale (e plotta)")
 
 # CAMPIONI N/N
 
