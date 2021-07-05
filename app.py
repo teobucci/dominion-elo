@@ -14,12 +14,93 @@ from functions_elo import new_elos, get_K, aggiornaVinteDisputate, aggiornaElo, 
 from functions_gdrive import write_df_in_spreadsheet, get_worksheet
 from functions_streamlit import plotEloDataframe
 
-# COSTANTI
-with open('json/settings.json') as f:
-    data = json.load(f)
+# # COSTANTI
+# with open('json/settings.json') as f:
+#     data = json.load(f)
+
+# Per cancellare la cache dopo un giorno TODO forse di meno?
+
+from datetime import date
+
+
+def cache_clear_dt(dummy):
+    clear_dt = date.today()
+    return clear_dt
+
+
+if cache_clear_dt("dummy") < date.today():
+    st.caching.clear_cache()
+
+
+# cache della password e del nome utente
+
+@st.cache(allow_output_mutation=True, persist=True)
+def get_data():
+    return [None]
+
+
+my_db = get_data()
+
+#user_id = st.text_input("User ID")
+user_pas = st.text_input("Password")
+
+if st.button("Save and Login"):
+    my_db[0] = user_pas
+    if user_pas == st.secrets["password"]:
+        st.success("Login avvenuto con successo, si verrà disconnessi tra un giorno")
+    else:
+        st.warning("Nope")
+
+# if st.button("Show"):
+#     st.write(get_data())
+
+
+if st.button("Io funziono solo se la password è corretta") and my_db[0] == st.secrets["password"]:
+    st.balloons()
+
+# @st.cache(allow_output_mutation=True, persist=True)
+# def persist_dict():
+#     return []
+
+
+# dict = persist_dict()
+
+# st.write("The dict contains", dict)
+# new = st.text_area("Enter new stuff")
+# if st.button("Rerun"):
+#     st.balloons()
+# dict.append(new)
+# st.write(new)
+
+my_secrets = [
+    "players_names",
+    "vinte_disputate_worksheet_name",
+    "elo_worksheet_name",
+    "credentials_json_path",
+    "id_sheet_elo",
+    "K_ref_6_players",
+    "link_sheet_calcolo_elo",
+    "link_sheet_punteggi",
+    "vinte_disputate_csv",
+    "sheet_punteggi_xls",
+]
+data = {sec: st.secrets[sec] for sec in my_secrets}
+
+
+# data = {
+#     "players_names": st.secrets["players_names"],
+#     "vinte_disputate_worksheet_name": st.secrets["vinte_disputate_worksheet_name"],
+#     "elo_worksheet_name": st.secrets["elo_worksheet_name"],
+#     "credentials_json_path": st.secrets["credentials_json_path"],
+#     "id_sheet_elo": st.secrets["id_sheet_elo"],
+#     "K_ref_6_players": st.secrets["K_ref_6_players"],
+#     "link_sheet_calcolo_elo": st.secrets["link_sheet_calcolo_elo"],
+#     "link_sheet_punteggi": st.secrets["link_sheet_punteggi"],
+#     "vinte_disputate_csv": st.secrets["vinte_disputate_csv"],
+#     "sheet_punteggi_xls": st.secrets["sheet_punteggi_xls"],
+# }
 
 # questo lo importo perché fa comodo
-# ["Teo", "Jacopo", "Randa", "Marco", "Tommaso", "Braga"]
 players_names = data['players_names']
 
 
@@ -273,8 +354,6 @@ if(st.button("Mostra i Campioni (richiede molta potenza)")):
         st.markdown(str(key))
         st.write(champions_collection[key])
 
-
 # TODO
 # date importanti (espansioni) nel grafico
-
 # https://docs.gspread.org/en/latest/user-guide.html#using-gspread-with-pandas
