@@ -55,8 +55,12 @@ if st.button("Save and Login"):
 #     st.write(get_data())
 
 
-if st.button("Io funziono solo se la password è corretta") and my_db[0] == st.secrets["password"]:
-    st.balloons()
+# if st.button("Io funziono solo se la password è corretta") and my_db[0] == st.secrets["password"]:
+#     st.balloons()
+
+
+def check_password():
+    return my_db[0] == st.secrets["password"]
 
 # @st.cache(allow_output_mutation=True, persist=True)
 # def persist_dict():
@@ -192,7 +196,7 @@ st.markdown("---")
 st.markdown("Il seguente pulsante guarda il foglio dei punteggi e aggiorna, sovrascrivendo ogni volta per intero, il foglio _Vinte e Disputate_, usato poi nel calcolo dell'Elo.")
 
 
-if(st.button("1. Aggiorna \"Vinte e Disputate\"")):
+if(st.button("1. Aggiorna \"Vinte e Disputate\"") and check_password()):
 
     sheets_dict = pd.read_excel(data['sheet_punteggi_xls'], sheet_name=None)
 
@@ -210,7 +214,7 @@ if(st.button("1. Aggiorna \"Vinte e Disputate\"")):
 
 st.markdown("Questo pulsante legge il foglio _Vinte e Disputate_ e aggiorna il foglio dei punteggi ELO.")
 
-if(st.button("2. Aggiorna il foglio")):  # TODO
+if(st.button("2. Aggiorna il foglio") and check_password()):  # TODO
 
     # carico il df
     vinte_disputate_df = pd.read_csv(data['vinte_disputate_csv'], decimal=',')
@@ -237,7 +241,7 @@ if(st.button("2. Aggiorna il foglio")):  # TODO
 
 st.markdown("Questo pulsante legge il foglio dei punteggi ELO e sputa fuori tutte le statistiche.")
 
-if st.button("3. Leggi dal foglio (+ stats)"):
+if st.button("3. Leggi dal foglio (+ stats)") and check_password():
 
     elos_worksheet = get_worksheet(data['elo_worksheet_name'], data['id_sheet_elo'], data['credentials_json_path'])
     #elo_df_retrieved = pd.DataFrame(elos_worksheet.get_all_records())
@@ -264,7 +268,7 @@ if st.button("3. Leggi dal foglio (+ stats)"):
 st.markdown("---")
 
 
-if st.button("All-inclusive: aggiorna Vinte e Disputate, calcola Elo, leggi Elo"):
+if st.button("All-inclusive: aggiorna Vinte e Disputate, calcola Elo, leggi Elo") and check_password():
 
     # AGGIORNA
 
@@ -307,7 +311,7 @@ if st.button("All-inclusive: aggiorna Vinte e Disputate, calcola Elo, leggi Elo"
     plotEloDataframe(elo_df, vinte, disputate)
 
 
-if(st.button("Mostra i Campioni (richiede molta potenza)")):
+if(st.button("Mostra i Campioni (richiede molta potenza)") and check_password()):
     # devo recuperare due nuove tabelle con le vittorie secondo la logica di Dominion
 
     sheets_dict = pd.read_excel(data['sheet_punteggi_xls'], sheet_name=None)
