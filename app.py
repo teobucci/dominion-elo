@@ -183,18 +183,14 @@ if(st.button("Estrai!")):
 st.markdown("---")
 st.markdown("## Punteggi ELO")
 
-
-col1, col2 = st.beta_columns((1, 1))
-startDate = col1.date_input("INIZIO", datetime(2021, 1, 1))
-endDate = col2.date_input("FINE", datetime.today())
-st.markdown("⚠️ Il sistema delle date è WIP")
 # TODO
-
-
-st.markdown("---")
+# col1, col2 = st.beta_columns((1, 1))
+# startDate = col1.date_input("INIZIO", datetime(2021, 1, 1))
+# endDate = col2.date_input("FINE", datetime.today())
+# st.markdown("⚠️ Il sistema delle date è WIP")
+# st.markdown("---")
 
 st.markdown("Il seguente pulsante guarda il foglio dei punteggi e aggiorna, sovrascrivendo ogni volta per intero, il foglio _Vinte e Disputate_, usato poi nel calcolo dell'Elo.")
-
 
 if(st.button("1. Aggiorna \"Vinte e Disputate\"") and check_password()):
 
