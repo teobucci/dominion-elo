@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pandas.api.types import is_numeric_dtype
 
 
 def expected_1_v_others(player_elo, other_elos):
@@ -155,6 +156,10 @@ def aggiornaVinteDisputate(sheets_dict, players, roundUP=False):
         # prendo solo quelle dopo un certo giorno/anno TODO da sistemare in base alla richiesta
         giorno = pd.to_datetime(key, format='%d%m%Y')
         if giorno.year < 2021:
+            continue
+
+        # se non è ancora fillato di numeri lo salto
+        if (not is_numeric_dtype(sheets_dict[key][['VITTORIE']])):
             continue
 
         # trovo l'indice in corrispondenza di 'CLASSIFICA'
